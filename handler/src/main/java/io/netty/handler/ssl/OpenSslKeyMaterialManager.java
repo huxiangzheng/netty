@@ -88,6 +88,8 @@ class OpenSslKeyMaterialManager {
     private void setKeyMaterial(long ssl, String alias) throws SSLException {
         long keyBio = 0;
         long keyCertChainBio = 0;
+        long keyCertChainBio2 = 0;
+
         try {
             // TODO: Should we cache these and so not need to do a memory copy all the time ?
             PrivateKey key = keyManager.getPrivateKey(alias);
@@ -95,25 +97,24 @@ class OpenSslKeyMaterialManager {
 
             if (certificates != null && certificates.length != 0) {
                 keyCertChainBio = OpenSslContext.toBIO(certificates);
+                keyCertChainBio2 = OpenSslContext.toBIO(certificates);
+
                 if (key != null) {
                     keyBio = OpenSslContext.toBIO(key);
                 }
                 SSL.setCertificateBio(ssl, keyCertChainBio, keyBio, password);
 
                 // We may have more then one cert in the chain so add all of them now.
-                SSL.setCertificateChainBio(ssl, keyCertChainBio, false);
+                SSL.setCertificateChainBio(ssl, keyCertChainBio2, false);
             }
         } catch (SSLException e) {
             throw e;
         } catch (Exception e) {
             throw new SSLException(e);
         } finally {
-            if (keyBio != 0) {
-                SSL.freeBIO(keyBio);
-            }
-            if (keyCertChainBio != 0) {
-                SSL.freeBIO(keyCertChainBio);
-            }
+            ReferenceCountedOpenSslContext.freeBio(keyBio);
+            ReferenceCountedOpenSslContext.freeBio(keyCertChainBio);
+            ReferenceCountedOpenSslContext.freeBio(keyCertChainBio2);
         }
     }
 
